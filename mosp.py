@@ -99,11 +99,17 @@ def main(argv):
         elif opt in ("-j", "--no-header-row"):
             header_row = 0
 
+    print "\nMeasure Operating System Performance (mosp) version", \
+                                         version
+
     #*** Display output filename:
     if output_file_enabled:
-        print "results filename is", output_file
+        print "Results filename is", output_file
     else:
-        print "Not outputing results to file as option not selected"
+        print "Not outputing results to file, as option not selected"
+
+    if not header_row:
+        print "Not writing a header row to CSV"
 
     #*** Use this if max_run_time is set:
     initial_time = time.time()
@@ -150,7 +156,6 @@ def main(argv):
                     + "," + str(delta_sout) \
                     + "," + str(delta_pin) \
                     + "," + str(delta_pout) \
-                    + "," + str(total_time) \
                     + "\n"
         result_kvp = str(timestamp) \
                     + " cpu=" + str(os_cpu) \
@@ -163,7 +168,7 @@ def main(argv):
             #*** Header row in CSV:
             if first_time and header_row:
                 #*** Write a header row to CSV:
-                header_csv = hostname + "-cpu," + \
+                header_csv = "time," + hostname + "-cpu," + \
                                 hostname + "-swap-in," + \
                                 hostname + "-swap-out," + \
                                 hostname + "-pkt-in," + \
@@ -209,7 +214,7 @@ Usage:
   python mosp.py [options]
 
 Example usage:
-  python mosp.py -w -i 2
+  python mosp.py -W -i 2
 
 Options:
  -h, --help          Display this help and exit
@@ -219,7 +224,8 @@ Options:
                        (default is 1)
  -w, --output-file   Specify an output filename
  -W                  Output results to default filename
-                       default is format HOSTNAME-YYYYMMDD-HHMMSS.csv
+                       default format is:
+                       mosp-HOSTNAME-YYYYMMDD-HHMMSS.csv
  -j  --no-header-row       Suppress writing header row into CSV
  -v, --version       Output version information and exit
 
