@@ -39,6 +39,9 @@ import socket
 import datetime
 import time
 
+#*** For file path:
+import os
+
 #*** Import sys and getopt for command line argument parsing:
 import sys, getopt
 
@@ -46,13 +49,14 @@ def main(argv):
     """
     Main function of mosp
     """
-    version = "0.1.0"
+    version = "0.1.1"
     interval = 1
     max_run_time = 0
     finished = 0
     first_time = 1
     output_file = 0
     output_file_enabled = 0
+    output_path = 0
     header_row = 1
     prev_sin = 0
     prev_sout = 0
@@ -65,13 +69,14 @@ def main(argv):
 
     #*** Start by parsing command line parameters:
     try:
-        opts, args = getopt.getopt(argv, "hu:m:ni:w:Wjv",
+        opts, args = getopt.getopt(argv, "hu:m:ni:w:Wb:jv",
                                 ["help",
                                 "url=",
                                 "max-run-time=",
                                 "no-keepalive",
                                 "interval=",
                                 "output-file=",
+                                "output-path=",
                                 "no-header-row",
                                 "version"])
     except getopt.GetoptError as err:
@@ -82,7 +87,7 @@ def main(argv):
         if opt in ("-h", "--help"):
             print_help()
             sys.exit()
-        elif opt == '-V':
+        elif opt in ("-v", "--version"):
             print 'mosp.py version', version
             sys.exit()
         elif opt in ("-m", "--max-run-time"):
@@ -96,6 +101,8 @@ def main(argv):
             output_file = "mosp-" + hostname + "-" + \
                              time.strftime("%Y%m%d-%H%M%S.csv")
             output_file_enabled = 1
+        elif opt in ("-b", "--output-path"):
+            output_path = arg
         elif opt in ("-j", "--no-header-row"):
             header_row = 0
 
@@ -104,6 +111,8 @@ def main(argv):
 
     #*** Display output filename:
     if output_file_enabled:
+        if output_path:
+            output_file = os.path.join(output_path, output_file)
         print "Results filename is", output_file
     else:
         print "Not outputing results to file, as option not selected"
@@ -226,6 +235,7 @@ Options:
  -W                  Output results to default filename
                        default format is:
                        mosp-HOSTNAME-YYYYMMDD-HHMMSS.csv
+ -b, --output-path         Specify path to output file directory
  -j  --no-header-row       Suppress writing header row into CSV
  -v, --version       Output version information and exit
 
