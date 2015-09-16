@@ -126,37 +126,35 @@ def main(argv):
     #*** Start the loop:
     while not finished:
         timenow = datetime.datetime.now()
-        timestamp = timenow.strftime("%H:%M:%S")
+        timestamp = timenow.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
         start_time = time.time()
         #*** CPU percentage with psutil:
         os_cpu = psutil.cpu_percent()
         #*** Swap rates with psutil, calculate differences:
         os_mem_swap = psutil.swap_memory()
         if prev_sin:
-           delta_sin = os_mem_swap.sin - prev_sin
+            delta_sin = os_mem_swap.sin - prev_sin
         else:
             delta_sin = 0
         prev_sin = os_mem_swap.sin
         if prev_sout:
-           delta_sout = os_mem_swap.sout - prev_sout
+            delta_sout = os_mem_swap.sout - prev_sout
         else:
             delta_sout = 0
         prev_sout = os_mem_swap.sout
         #*** Network Packets Per Second:
         os_net = psutil.net_io_counters(pernic=True)
         if prev_pin:
-           delta_pin = os_net[interface].packets_recv - prev_pin
+            delta_pin = os_net[interface].packets_recv - prev_pin
         else:
             delta_pin = 0
         prev_pin = os_net[interface].packets_recv
         if prev_pout:
-           delta_pout = os_net[interface].packets_sent - prev_pout
+            delta_pout = os_net[interface].packets_sent - prev_pout
         else:
             delta_pout = 0
         prev_pout = os_net[interface].packets_sent
 
-        end_time = time.time()
-        total_time = end_time - start_time
         #*** Put the stats into a nice string for printing and
         #***  writing to file:
         result_csv = str(timestamp) \
@@ -226,18 +224,18 @@ Example usage:
   python mosp.py -W -i 2
 
 Options:
- -h, --help          Display this help and exit
- -m, --max-run-time  Maximum time to run for before exiting
+ -h  --help          Display this help and exit
+ -m  --max-run-time  Maximum time to run for before exiting
                        (default is infinite)
- -i, --interval      Interval between requests in seconds
+ -i  --interval      Interval between requests in seconds
                        (default is 1)
- -w, --output-file   Specify an output filename
+ -w  --output-file   Specify an output filename
  -W                  Output results to default filename
                        default format is:
                        mosp-HOSTNAME-YYYYMMDD-HHMMSS.csv
- -b, --output-path         Specify path to output file directory
+ -b  --output-path         Specify path to output file directory
  -j  --no-header-row       Suppress writing header row into CSV
- -v, --version       Output version information and exit
+ -v  --version       Output version information and exit
 
  Results are written in following CSV format:
  <timestamp>,<FOO>,
