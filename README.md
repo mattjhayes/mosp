@@ -30,16 +30,20 @@ python mosp.py [options]
 ```-i  --interval```       Interval between requests in seconds
                            (default is 1)
 
- -w  --output-file   Specify an output filename
- -W                  Output results to default filename
+```-w  --output-file```    Specify an output filename
+
+```-W```                   Output results to default filename
                        default format is:
                        mosp-HOSTNAME-YYYYMMDD-HHMMSS.csv
- -b  --output-path         Specify path to output file directory
- -j  --no-header-row       Suppress writing header row into CSV
- -v  --version       Output version information and exit
- Results are written in following CSV format:
- <timestamp>,<FOO>,
-    <elapsed_time>
+
+```-b  --output-path```         Specify path to output file directory
+
+```-j  --no-header-row```       Suppress writing header row into CSV
+
+```-v  --version```       Output version information and exit
+
+Results are written in following CSV format:
+```<timestamp>,<FOO>,<elapsed_time>```
 
 ### Example
 ```
