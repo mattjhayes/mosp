@@ -33,8 +33,8 @@ python mosp.py [options]
 ```-w  --output-file```    Specify an output filename
 
 ```-W```                   Output results to default filename
-                       default format is:
-                       mosp-HOSTNAME-YYYYMMDD-HHMMSS.csv
+
+default format is: *mosp-HOSTNAME-YYYYMMDD-HHMMSS.csv*
 
 ```-b  --output-path```         Specify path to output file directory
 
