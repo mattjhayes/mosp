@@ -43,7 +43,9 @@ default format is: *mosp-HOSTNAME-YYYYMMDD-HHMMSS.csv*
 ```-v  --version```       Output version information and exit
 
 Results are written in following CSV format:
-```<timestamp>,<FOO>,<elapsed_time>```
+```
+<timestamp>,<FOO>,<elapsed_time>
+```
 
 ### Example
 ```
