@@ -48,7 +48,7 @@ import sys, getopt
 #*** For ordered dictionaries:
 import collections
 
-def main(argv, nics):
+def main(argv):
     """
     Main function of mosp
     """
@@ -123,6 +123,9 @@ def main(argv, nics):
     #*** Use this if max_run_time is set:
     initial_time = time.time()
 
+    #*** Instantiate classes:
+    nics = Nics()
+
     #*** Start the loop:
     while not finished:
         timenow = datetime.datetime.now()
@@ -166,7 +169,7 @@ def main(argv, nics):
                 header_csv = "time," + hostname + "-cpu," + \
                                 hostname + "-swap-in," + \
                                 hostname + "-swap-out," + \
-                                "," + nics.csv_header(hostname) \
+                                nics.csv_header(hostname) \
                                 + "\n"
                 first_time = 0
                 with open(output_file, 'a') as the_file:
@@ -248,6 +251,12 @@ class Nics(object):
         self.delta_bytes_in = collections.OrderedDict()
         self.prev_bytes_out = collections.OrderedDict()
         self.delta_bytes_out = collections.OrderedDict()
+        self.interfaces = []
+
+        #*** Build a list of the NICs that will be used for ordering:
+        os_net = psutil.net_io_counters(pernic=True)
+        for interface in os_net:
+            self.interfaces.append(interface)
 
     def update(self):
         """
@@ -330,14 +339,11 @@ class Nics(object):
         Get a CSV header row string for all NICs
         """
         result = ""
-        for key in self.delta_pkts_in:
-            result += hostname + "-pkts-in[" + key + "],"
-        for key in self.delta_pkts_out:
-            result += hostname + "-pkts-out[" + key + "],"
-        for key in self.delta_bytes_in:
-            result += hostname + "-bytes-in[" + key + "],"
-        for key in self.delta_bytes_out:
-            result += hostname + "-bytes-out[" + key + "],"
+        for interface in self.interfaces:
+            result += hostname + "-pkts-in[" + interface + "],"
+            result += hostname + "-pkts-out[" + interface + "],"
+            result += hostname + "-bytes-in[" + interface + "],"
+            result += hostname + "-bytes-out[" + interface + "],"
         return result
 
     def csv(self):
@@ -345,14 +351,11 @@ class Nics(object):
         Get a CSV string of statistics for all NICs
         """
         result = ""
-        for key in self.delta_pkts_in:
-            result += str(self.delta_pkts_in[key]) + ","
-        for key in self.delta_pkts_out:
-            result += str(self.delta_pkts_out[key]) + ","
-        for key in self.delta_bytes_in:
-            result += str(self.delta_bytes_in[key]) + ","
-        for key in self.delta_bytes_out:
-            result += str(self.delta_bytes_out[key]) + ","
+        for interface in self.interfaces:
+            result += str(self.delta_pkts_in[interface]) + ","
+            result += str(self.delta_pkts_out[interface]) + ","
+            result += str(self.delta_bytes_in[interface]) + ","
+            result += str(self.delta_bytes_out[interface]) + ","
         return result
 
     def kvp(self):
@@ -360,25 +363,19 @@ class Nics(object):
         Get a Key-Value Pair (KVP) string of statistics for all NICs
         """
         result = ""
-        for key in self.delta_pkts_in:
-            result += "pkts-in[" + key + "]=" + \
-                                             str(self.delta_pkts_in[key]) + " "
-        for key in self.delta_pkts_out:
-            result += "pkts-out[" + key + "]=" + \
-                                            str(self.delta_pkts_out[key]) + " "
-        for key in self.delta_bytes_in:
-            result += "bytes-in[" + key + "]=" + \
-                                            str(self.delta_bytes_in[key]) + " "
-        for key in self.delta_bytes_out:
-            result += "bytes-out[" + key + "]=" + \
-                                           str(self.delta_bytes_out[key]) + " "
+        for interface in self.interfaces:
+            result += "pkts-in[" + interface + "]=" + \
+                                       str(self.delta_pkts_in[interface]) + " "
+            result += "pkts-out[" + interface + "]=" + \
+                                      str(self.delta_pkts_out[interface]) + " "
+            result += "bytes-in[" + interface + "]=" + \
+                                      str(self.delta_bytes_in[interface]) + " "
+            result += "bytes-out[" + interface + "]=" + \
+                                     str(self.delta_bytes_out[interface]) + " "
         return result
 
 if __name__ == "__main__":
-    #*** Instantiate classes:
-    nics = Nics()
     #*** Run the main function with command line
     #***  arguments from position 1
-
-    main(sys.argv[1:], nics)
+    main(sys.argv[1:])
 
