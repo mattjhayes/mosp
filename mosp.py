@@ -45,11 +45,14 @@ import os
 #*** Import sys and getopt for command line argument parsing:
 import sys, getopt
 
-def main(argv):
+#*** For ordered dictionaries:
+import collections
+
+def main(argv, nics):
     """
     Main function of mosp
     """
-    version = "0.1.1"
+    version = "0.1.2"
     interval = 1
     max_run_time = 0
     finished = 0
@@ -60,9 +63,6 @@ def main(argv):
     header_row = 1
     prev_sin = 0
     prev_sout = 0
-    prev_pin = 0
-    prev_pout = 0
-    interface = 'eth1'
 
     #*** Get the hostname for use in filenames etc:
     hostname = socket.gethostname()
@@ -142,18 +142,8 @@ def main(argv):
         else:
             delta_sout = 0
         prev_sout = os_mem_swap.sout
-        #*** Network Packets Per Second:
-        os_net = psutil.net_io_counters(pernic=True)
-        if prev_pin:
-            delta_pin = os_net[interface].packets_recv - prev_pin
-        else:
-            delta_pin = 0
-        prev_pin = os_net[interface].packets_recv
-        if prev_pout:
-            delta_pout = os_net[interface].packets_sent - prev_pout
-        else:
-            delta_pout = 0
-        prev_pout = os_net[interface].packets_sent
+        #*** Update network measurements:
+        nics.update()
 
         #*** Put the stats into a nice string for printing and
         #***  writing to file:
@@ -161,15 +151,13 @@ def main(argv):
                     + "," + str(os_cpu) \
                     + "," + str(delta_sin) \
                     + "," + str(delta_sout) \
-                    + "," + str(delta_pin) \
-                    + "," + str(delta_pout) \
+                    + "," + nics.csv() \
                     + "\n"
         result_kvp = str(timestamp) \
                     + " cpu=" + str(os_cpu) \
                     + " swap-in=" + str(delta_sin) \
                     + " swap-out=" + str(delta_sout) \
-                    + " pkt-in=" + str(delta_pin) \
-                    + " pkt-out=" + str(delta_pout)
+                    + " " + nics.kvp()
         print result_kvp
         if output_file_enabled:
             #*** Header row in CSV:
@@ -178,8 +166,8 @@ def main(argv):
                 header_csv = "time," + hostname + "-cpu," + \
                                 hostname + "-swap-in," + \
                                 hostname + "-swap-out," + \
-                                hostname + "-pkt-in," + \
-                                hostname + "-pkt-out\n"
+                                "," + nics.csv_header(hostname) \
+                                + "\n"
                 first_time = 0
                 with open(output_file, 'a') as the_file:
                     the_file.write(header_csv)
@@ -243,7 +231,154 @@ Options:
  """
     return()
 
+class Nics(object):
+    """
+    Represents the Network Interface Cards (NICS)
+    on the system
+    """
+    def __init__(self):
+        """
+        Initialise the class
+        """
+        self.prev_pkts_in = collections.OrderedDict()
+        self.delta_pkts_in = collections.OrderedDict()
+        self.prev_pkts_out = collections.OrderedDict()
+        self.delta_pkts_out = collections.OrderedDict()
+        self.prev_bytes_in = collections.OrderedDict()
+        self.delta_bytes_in = collections.OrderedDict()
+        self.prev_bytes_out = collections.OrderedDict()
+        self.delta_bytes_out = collections.OrderedDict()
+
+    def update(self):
+        """
+        Update the stats for NICs from psutil
+        """
+        #*** Get dictionary of NICs with results from psutil:
+        os_net = psutil.net_io_counters(pernic=True)
+        #*** Update our variables including delta values:
+        for interface in os_net:
+            #*** Packets in:
+            pkts_in = os_net[interface].packets_recv
+
+            #*** Ensure keys in dicts:
+            if not interface in self.prev_pkts_in:
+                self.prev_pkts_in[interface] = 0
+            if not interface in self.delta_pkts_in:
+                self.delta_pkts_in[interface] = 0
+
+            #*** Calculate difference in packets in:
+            if self.prev_pkts_in[interface]:
+                self.delta_pkts_in[interface] = \
+                                         pkts_in - self.prev_pkts_in[interface]
+            else:
+                self.delta_pkts_in[interface] = 0
+            self.prev_pkts_in[interface] = pkts_in
+
+            #*** Packets out:
+            pkts_out = os_net[interface].packets_sent
+
+            #*** Ensure keys in dicts:
+            if not interface in self.prev_pkts_out:
+                self.prev_pkts_out[interface] = 0
+            if not interface in self.delta_pkts_out:
+                self.delta_pkts_out[interface] = 0
+
+            #*** Calculate difference in packets out:
+            if self.prev_pkts_out[interface]:
+                self.delta_pkts_out[interface] = \
+                                       pkts_out - self.prev_pkts_out[interface]
+            else:
+                self.delta_pkts_out[interface] = 0
+            self.prev_pkts_out[interface] = pkts_out
+
+            #*** Bytes in:
+            bytes_in = os_net[interface].bytes_recv
+
+            #*** Ensure keys in dicts:
+            if not interface in self.prev_bytes_in:
+                self.prev_bytes_in[interface] = 0
+            if not interface in self.delta_bytes_in:
+                self.delta_bytes_in[interface] = 0
+
+            #*** Calculate difference in bytes in:
+            if self.prev_bytes_in[interface]:
+                self.delta_bytes_in[interface] = \
+                        bytes_in - self.prev_bytes_in[interface]
+            else:
+                self.delta_bytes_in[interface] = 0
+            self.prev_bytes_in[interface] = bytes_in
+
+            #*** Bytes out:
+            bytes_out = os_net[interface].bytes_sent
+
+            #*** Ensure keys in dicts:
+            if not interface in self.prev_bytes_out:
+                self.prev_bytes_out[interface] = 0
+            if not interface in self.delta_bytes_out:
+                self.delta_bytes_out[interface] = 0
+
+            #*** Calculate difference in bytes out:
+            if self.prev_bytes_out[interface]:
+                self.delta_bytes_out[interface] = \
+                       bytes_out - self.prev_bytes_out[interface]
+            else:
+                self.delta_bytes_out[interface] = 0
+            self.prev_bytes_out[interface] = bytes_out
+
+    def csv_header(self, hostname):
+        """
+        Get a CSV header row string for all NICs
+        """
+        result = ""
+        for key in self.delta_pkts_in:
+            result += hostname + "-pkts-in[" + key + "],"
+        for key in self.delta_pkts_out:
+            result += hostname + "-pkts-out[" + key + "],"
+        for key in self.delta_bytes_in:
+            result += hostname + "-bytes-in[" + key + "],"
+        for key in self.delta_bytes_out:
+            result += hostname + "-bytes-out[" + key + "],"
+        return result
+
+    def csv(self):
+        """
+        Get a CSV string of statistics for all NICs
+        """
+        result = ""
+        for key in self.delta_pkts_in:
+            result += str(self.delta_pkts_in[key]) + ","
+        for key in self.delta_pkts_out:
+            result += str(self.delta_pkts_out[key]) + ","
+        for key in self.delta_bytes_in:
+            result += str(self.delta_bytes_in[key]) + ","
+        for key in self.delta_bytes_out:
+            result += str(self.delta_bytes_out[key]) + ","
+        return result
+
+    def kvp(self):
+        """
+        Get a Key-Value Pair (KVP) string of statistics for all NICs
+        """
+        result = ""
+        for key in self.delta_pkts_in:
+            result += "pkts-in[" + key + "]=" + \
+                                             str(self.delta_pkts_in[key]) + " "
+        for key in self.delta_pkts_out:
+            result += "pkts-out[" + key + "]=" + \
+                                            str(self.delta_pkts_out[key]) + " "
+        for key in self.delta_bytes_in:
+            result += "bytes-in[" + key + "]=" + \
+                                            str(self.delta_bytes_in[key]) + " "
+        for key in self.delta_bytes_out:
+            result += "bytes-out[" + key + "]=" + \
+                                           str(self.delta_bytes_out[key]) + " "
+        return result
+
 if __name__ == "__main__":
+    #*** Instantiate classes:
+    nics = Nics()
     #*** Run the main function with command line
     #***  arguments from position 1
-    main(sys.argv[1:])
+
+    main(sys.argv[1:], nics)
+
