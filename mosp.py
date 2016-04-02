@@ -124,15 +124,18 @@ def main(argv):
     initial_time = time.time()
 
     #*** Instantiate classes:
-    nics = Nics()
+    cpus = CPUs()
+    nics = NICs()
 
     #*** Start the loop:
     while not finished:
         timenow = datetime.datetime.now()
         timestamp = timenow.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
         start_time = time.time()
-        #*** CPU percentage with psutil:
-        os_cpu = psutil.cpu_percent()
+
+        #*** Update CPU measurements:
+        cpus.update()
+
         #*** Swap rates with psutil, calculate differences:
         os_mem_swap = psutil.swap_memory()
         if prev_sin:
@@ -145,20 +148,21 @@ def main(argv):
         else:
             delta_sout = 0
         prev_sout = os_mem_swap.sout
+
         #*** Update network measurements:
         nics.update()
 
         #*** Put the stats into a nice string for printing and
         #***  writing to file:
         result_csv = str(timestamp) \
-                    + "," + str(os_cpu) \
-                    + "," + str(delta_sin) \
+                    + "," + cpus.csv() \
+                    + str(delta_sin) \
                     + "," + str(delta_sout) \
                     + "," + nics.csv() \
                     + "\n"
         result_kvp = str(timestamp) \
-                    + " cpu=" + str(os_cpu) \
-                    + " swap-in=" + str(delta_sin) \
+                    + " cpu=" + cpus.kvp() \
+                    + "swap-in=" + str(delta_sin) \
                     + " swap-out=" + str(delta_sout) \
                     + " " + nics.kvp()
         print result_kvp
@@ -166,7 +170,7 @@ def main(argv):
             #*** Header row in CSV:
             if first_time and header_row:
                 #*** Write a header row to CSV:
-                header_csv = "time," + hostname + "-cpu," + \
+                header_csv = "time," + cpus.csv_header(hostname) + \
                                 hostname + "-swap-in," + \
                                 hostname + "-swap-out," + \
                                 nics.csv_header(hostname) \
@@ -234,7 +238,55 @@ Options:
  """
     return()
 
-class Nics(object):
+class CPUs(object):
+    """
+    Represents the CPUs
+    on the system
+    """
+    def __init__(self):
+        """
+        Initialise the class
+        """
+        #*** Build a list of the CPUs for sanity checking:
+        self.cpus = psutil.cpu_percent(percpu=True)
+        self.cpus_current = []
+
+    def update(self):
+        """
+        Update the CPU stats
+        """
+        self.cpus_current = psutil.cpu_percent(percpu=True)
+        assert len(self.cpus_current) == len(self.cpus)
+        return self.cpus_current
+
+    def csv_header(self, hostname):
+        """
+        Get a CSV header row string for all CPUs
+        """
+        result = ""
+        for idx, cpu in enumerate(self.cpus):
+            result += hostname + "-cpu[" + str(idx) + "],"
+        return result
+
+    def csv(self):
+        """
+        Get a CSV string of statistics for all CPUs
+        """
+        result = ""
+        for cpu in self.cpus_current:
+            result += str(cpu) + ","
+        return result
+
+    def kvp(self):
+        """
+        Get a Key-Value Pair (KVP) string of statistics for all CPUs
+        """
+        result = ""
+        for idx, cpu in enumerate(self.cpus_current):
+            result += "cpu[" + str(idx) + "]=" + str(cpu) + " "
+        return result
+
+class NICs(object):
     """
     Represents the Network Interface Cards (NICS)
     on the system
