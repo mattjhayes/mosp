@@ -61,8 +61,6 @@ def main(argv):
     output_file_enabled = 0
     output_path = 0
     header_row = 1
-    prev_sin = 0
-    prev_sout = 0
 
     #*** Get the hostname for use in filenames etc:
     hostname = socket.gethostname()
@@ -125,6 +123,7 @@ def main(argv):
 
     #*** Instantiate classes:
     cpus = CPUs()
+    swap = Swap()
     nics = NICs()
 
     #*** Start the loop:
@@ -136,45 +135,32 @@ def main(argv):
         #*** Update CPU measurements:
         cpus.update()
 
-        #*** Swap rates with psutil, calculate differences:
-        os_mem_swap = psutil.swap_memory()
-        if prev_sin:
-            delta_sin = os_mem_swap.sin - prev_sin
-        else:
-            delta_sin = 0
-        prev_sin = os_mem_swap.sin
-        if prev_sout:
-            delta_sout = os_mem_swap.sout - prev_sout
-        else:
-            delta_sout = 0
-        prev_sout = os_mem_swap.sout
+        #*** Update swap measurements:
+        swap.update()
 
         #*** Update network measurements:
         nics.update()
 
         #*** Put the stats into a nice string for printing and
         #***  writing to file:
-        result_csv = str(timestamp) \
-                    + "," + cpus.csv() \
-                    + str(delta_sin) \
-                    + "," + str(delta_sout) \
-                    + "," + nics.csv() \
+        result_csv = str(timestamp) + "," \
+                    + cpus.csv() \
+                    + swap.csv() \
+                    + nics.csv() \
                     + "\n"
-        result_kvp = str(timestamp) \
-                    + " cpu=" + cpus.kvp() \
-                    + "swap-in=" + str(delta_sin) \
-                    + " swap-out=" + str(delta_sout) \
-                    + " " + nics.kvp()
+        result_kvp = str(timestamp) + " " \
+                    + cpus.kvp() \
+                    + swap.kvp() \
+                    + nics.kvp()
         print result_kvp
         if output_file_enabled:
             #*** Header row in CSV:
             if first_time and header_row:
                 #*** Write a header row to CSV:
                 header_csv = "time," + cpus.csv_header(hostname) + \
-                                hostname + "-swap-in," + \
-                                hostname + "-swap-out," + \
-                                nics.csv_header(hostname) \
-                                + "\n"
+                                swap.csv_header(hostname) + \
+                                nics.csv_header(hostname) + \
+                                "\n"
                 first_time = 0
                 with open(output_file, 'a') as the_file:
                     the_file.write(header_csv)
@@ -232,9 +218,6 @@ Options:
  -j  --no-header-row       Suppress writing header row into CSV
  -v  --version       Output version information and exit
 
- Results are written in following CSV format:
- <timestamp>,<FOO>,
-    <elapsed_time>
  """
     return()
 
@@ -284,6 +267,68 @@ class CPUs(object):
         result = ""
         for idx, cpu in enumerate(self.cpus_current):
             result += "cpu[" + str(idx) + "]=" + str(cpu) + " "
+        return result
+
+class Swap(object):
+    """
+    Represents the swap memory transfer rates
+    on the system
+    """
+    def __init__(self):
+        """
+        Initialise the class
+        """
+        self.prev_swap_in = 0
+        self.delta_swap_in = 0
+        self.prev_swap_out = 0
+        self.delta_swap_out = 0
+
+    def update(self):
+        """
+        Update the stats for swap from psutil
+        """
+        #*** Swap rates with psutil, calculate differences:
+        os_mem_swap = psutil.swap_memory()
+
+        #*** Swap In:
+        if self.prev_swap_in:
+            self.delta_swap_in = os_mem_swap.sin - self.prev_swap_in
+        else:
+            self.delta_swap_in = 0
+        self.prev_swap_in = os_mem_swap.sin
+
+        #*** Swap Out:
+        if self.prev_swap_out:
+            self.delta_swap_out = os_mem_swap.sout - self.prev_swap_out
+        else:
+            self.delta_swap_out = 0
+        self.prev_swap_out = os_mem_swap.sout
+
+    def csv_header(self, hostname):
+        """
+        Get a CSV header row string for swap
+        """
+        result = ""
+        result += hostname + "-swap-in,"
+        result += hostname + "-swap-out,"
+        return result
+
+    def csv(self):
+        """
+        Get a CSV string of statistics for swap
+        """
+        result = ""
+        result += str(self.delta_swap_in) + ","
+        result += str(self.delta_swap_out) + ","
+        return result
+
+    def kvp(self):
+        """
+        Get a Key-Value Pair (KVP) string of statistics for all NICs
+        """
+        result = ""
+        result += "swap-in=" + str(self.delta_swap_in) + " "
+        result += "swap-out=" + str(self.delta_swap_out) + " "
         return result
 
 class NICs(object):
